@@ -6,25 +6,25 @@ import sqlite3
 
 # Pokemon types
 class Type(Enum):
-    Non = 0
-    Normal = 1
-    Electric = 2
-    Psychic = 3
-    Poison = 4
-    Ghost = 5
-    Fire = 6
-    Water = 7
-    Ground = 8
-    Fighting = 9
-    Grass = 10
-    Flying = 11
-    Bug = 12
-    Dragon = 13
-    Fairy = 14
-    Steel = 15
-    Dark = 16
-    Ice = 17
-    Rock = 18
+    NONE = 0
+    NORMAL = 1
+    ELECTRIC = 2
+    PSYCHIC = 3
+    POISON = 4
+    GHOST = 5
+    FIRE = 6
+    WATER = 7
+    GROUND = 8
+    FIGHTING = 9
+    GRASS = 10
+    FLYING = 11
+    BUG = 12
+    DRAGON = 13
+    FAIRY = 14
+    STEEL = 15
+    DARK = 16
+    ICE = 17
+    ROCK = 18
 
 # Possible clues
 class Clue(Enum):
@@ -169,7 +169,7 @@ def get_pick():
     res = cur.fetchone()
     con.close()
     
-    pick = Pokemon(res[0], res[1], res[2], Type[res[3]], Type[res[4]], res[5], res[6], res[7])
+    pick = Pokemon(res[0], res[1], res[2], Type[res[3].upper()], Type[res[4].upper()], res[5], res[6], res[7])
     return pick
 
 def get_clues():
@@ -260,19 +260,19 @@ while(guesses < 8 and not (\
     # Update height filter
     match clues[3]:
         case Clue.DOWN:
-            height_high_bound = pick.height
+            height_high_bound = pick.height - 0.1
         case Clue.UP:
-            height_low_bound = pick.height
+            height_low_bound = pick.height + 0.1
         case Clue.CORRECT:
-            height_low_bound = pick.height - 0.01
-            height_high_bound = pick.height + 0.01
+            height_low_bound = pick.height
+            height_high_bound = pick.height
 
     # Update weight filter
     match clues[4]:
         case Clue.DOWN:
-            weight_high_bound = pick.weight
+            weight_high_bound = pick.weight - 0.1
         case Clue.UP:
-            weight_low_bound = pick.weight
+            weight_low_bound = pick.weight + 0.1
         case Clue.CORRECT:
-            weight_low_bound = pick.weight - 0.01
-            weight_high_bound = pick.weight + 0.01
+            weight_low_bound = pick.weight
+            weight_high_bound = pick.weight
