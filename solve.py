@@ -26,6 +26,51 @@ class Type(Enum):
     ICE = 17
     ROCK = 18
 
+#
+# Function to convert the types into the form the DB expects.
+#
+def get_type_name(typ):
+    if typ == Type.NONE:
+        return 'None'
+    elif typ == Type.NORMAL:
+        return 'Normal'
+    elif typ == Type.ELECTRIC:
+        return 'Electric'
+    elif typ == Type.PSYCHIC:
+        return 'Psychic'
+    elif typ == Type.POISON:
+        return 'Poison'
+    elif typ == Type.GHOST:
+        return 'Ghost'
+    elif typ == Type.FIRE:
+        return 'Fire'
+    elif typ == Type.WATER:
+        return 'Water'
+    elif typ == Type.GROUND:
+        return 'Ground'
+    elif typ == Type.FIGHTING:
+        return 'Fighting'
+    elif typ == Type.GRASS:
+        return 'Grass'
+    elif typ == Type.FLYING:
+        return 'Flying'
+    elif typ == Type.BUG:
+        return 'Bug'
+    elif typ == Type.DRAGON:
+        return 'Dragon'
+    elif typ == Type.FAIRY:
+        return 'Fairy'
+    elif typ == Type.STEEL:
+        return 'Steel'
+    elif typ == Type.DARK:
+        return 'Dark'
+    elif typ == Type.ICE:
+        return 'Ice'
+    elif typ == Type.ROCK:
+        return 'Rock'
+    # There is a problem if we reach here.
+    return 'ERROR'
+
 # Possible clues
 class Clue(Enum):
     WRONG = 0
@@ -164,7 +209,7 @@ def get_pick():
     # Get first listed result and return as Pokemon object
     res = cur.fetchone()
     con.close()
-    
+
     pick = Pokemon(res[0], res[1], res[2], Type(res[3]), Type(res[4]), res[5], res[6], res[7])
     return pick
 
