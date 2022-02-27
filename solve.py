@@ -37,6 +37,7 @@ class Clue(Enum):
 # Pokemon struct
 @dataclass
 class Pokemon:
+    id: int
     name: str
     generation: int
     type1: Type
@@ -54,6 +55,7 @@ height_low_bound = 0
 height_high_bound = 10000000
 weight_low_bound = 0
 weight_high_bound = 10000000
+pokemon = []
 
 # Get next best guess
 def get_pick():
@@ -62,7 +64,8 @@ def get_pick():
 
     query = """
         WITH p AS (
-            SELECT 
+            SELECT
+                p.PokeID,
                 p.Name,
                 p.Generation,
                 t1.TypeName AS Type1,
@@ -81,6 +84,7 @@ def get_pick():
                 AND t2.TypeName NOT IN ({})
                 AND (p.Height BETWEEN {} AND {} OR p.Height IS NULL)
                 AND (p.Weight BETWEEN {} AND {} OR p.Weight IS NULL)
+                AND p.PokeID NOT IN ({})
         ),
         TypeListOrdered AS (
             SELECT p.Type1 AS TypeName, COUNT(p.Type1) AS Qty
@@ -158,13 +162,14 @@ def get_pick():
         height_low_bound,\
         height_high_bound,\
         weight_low_bound,\
-        weight_high_bound))
+        weight_high_bound,\
+        ", ".join(f"{id}" for id in pokemon)))
 
     # Get first listed result and return as Pokemon object
     res = cur.fetchone()
     con.close()
     
-    pick = Pokemon(res[0], res[1], Type[res[2]], Type[res[3]], res[4], res[5], res[6])
+    pick = Pokemon(res[0], res[1], res[2], Type[res[3]], Type[res[4]], res[5], res[6], res[7])
     return pick
 
 def get_clues():
@@ -200,6 +205,9 @@ while(guesses < 8 and not (\
     clues[2] == Clue.CORRECT and\
     clues[3] == Clue.CORRECT and\
     clues[4] == Clue.CORRECT)):
+    # Add pick to filter
+    pokemon.append(pick.id)
+
     # Get next best pick
     pick = get_pick()
 
