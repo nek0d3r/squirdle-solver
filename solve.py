@@ -68,20 +68,16 @@ def get_pick():
                 p.PokeID,
                 p.Name,
                 p.Generation,
-                t1.TypeName AS Type1,
-                t2.TypeName AS Type2,
+                p.Type1,
+                p.Type2,
                 p.Height,
                 p.Weight
             FROM
                 Pokemon p
-            INNER JOIN Type t1
-                ON t1.TypeID = p.Type1
-            INNER JOIN Type t2
-                ON t2.TypeID = p.Type2
             -- Now for the filters
             WHERE p.Generation BETWEEN {} AND {}
-                AND t1.TypeName NOT IN ({})
-                AND t2.TypeName NOT IN ({})
+                AND p.Type1 NOT IN ({})
+                AND p.Type2 NOT IN ({})
                 AND (p.Height BETWEEN {} AND {} OR p.Height IS NULL)
                 AND (p.Weight BETWEEN {} AND {} OR p.Weight IS NULL)
                 AND p.PokeID NOT IN ({})
@@ -157,8 +153,8 @@ def get_pick():
     cur.execute(query.format(\
         gen_low_bound,\
         gen_high_bound,\
-        (", ".join(f"'{type}'" for type in type1_filter)) if len(type1_filter) > 0 else "''",\
-        (", ".join(f"'{type}'" for type in type2_filter)) if len(type2_filter) > 0 else "''",\
+        ", ".join(f"{type}" for type in type1_filter),\
+        ", ".join(f"{type}" for type in type2_filter),\
         height_low_bound,\
         height_high_bound,\
         weight_low_bound,\
@@ -169,7 +165,7 @@ def get_pick():
     res = cur.fetchone()
     con.close()
     
-    pick = Pokemon(res[0], res[1], res[2], Type[res[3].upper()], Type[res[4].upper()], res[5], res[6], res[7])
+    pick = Pokemon(res[0], res[1], res[2], Type(res[3]), Type(res[4]), res[5], res[6], res[7])
     return pick
 
 def get_clues():
@@ -236,26 +232,26 @@ while(guesses < 8 and not (\
     # Update type 1 filter
     match clues[1]:
         case Clue.WRONG:
-            type1_filter.append(pick.type1)
+            type1_filter.append(pick.type1.value)
         case Clue.WRONGPOS:
-            type1_filter.append(pick.type1)
-            type2_filter = [str(type) for type in Type]
-            type2_filter.remove(str(pick.type1))
+            type1_filter.append(pick.type1.value)
+            type2_filter = [type.value for type in Type]
+            type2_filter.remove(pick.type1.value)
         case Clue.CORRECT:
-            type1_filter = [str(type) for type in Type]
-            type1_filter.remove(str(pick.type1))
+            type1_filter = [type.value for type in Type]
+            type1_filter.remove(pick.type1.value)
 
     # Update type 2 filter
     match clues[2]:
         case Clue.WRONG:
-            type2_filter.append(pick.type2)
+            type2_filter.append(pick.type2.value)
         case Clue.WRONGPOS:
-            type2_filter.append(pick.type2)
-            type1_filter = [str(type) for type in Type]
-            type1_filter.remove(str(pick.type2))
+            type2_filter.append(pick.type2.value)
+            type1_filter = [type.value for type in Type]
+            type1_filter.remove(pick.type2.value)
         case Clue.CORRECT:
-            type2_filter = [str(type) for type in Type]
-            type2_filter.remove(str(pick.type2))
+            type2_filter = [type.value for type in Type]
+            type2_filter.remove(pick.type2.value)
 
     # Update height filter
     match clues[3]:
