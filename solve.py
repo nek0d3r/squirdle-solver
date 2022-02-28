@@ -301,9 +301,9 @@ while(guesses < 8 and not (\
     # Update height filter
     match clues[3]:
         case Clue.DOWN:
-            height_high_bound = pick.height - 0.1
+            height_high_bound = pick.height - 0.05
         case Clue.UP:
-            height_low_bound = pick.height + 0.1
+            height_low_bound = pick.height + 0.05
         case Clue.CORRECT:
             height_low_bound = pick.height
             height_high_bound = pick.height
@@ -311,9 +311,9 @@ while(guesses < 8 and not (\
     # Update weight filter
     match clues[4]:
         case Clue.DOWN:
-            weight_high_bound = pick.weight - 0.1
+            weight_high_bound = pick.weight - 0.05
         case Clue.UP:
-            weight_low_bound = pick.weight + 0.1
+            weight_low_bound = pick.weight + 0.05
         case Clue.CORRECT:
             weight_low_bound = pick.weight
             weight_high_bound = pick.weight
