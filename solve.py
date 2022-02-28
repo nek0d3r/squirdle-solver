@@ -289,14 +289,14 @@ while(guesses < 8 and not (\
     # Update type 2 filter
     match clues[2]:
         case Clue.WRONG:
-            type2_filter.append(get_type_name(pick.type2))
+            type2_filter.append(pick.type2.value)
         case Clue.WRONGPOS:
-            type2_filter.append(get_type_name(pick.type2))
-            type1_filter = [get_type_name(type) for type in Type]
-            type1_filter.remove(get_type_name(pick.type2))
+            type2_filter.append(pick.type2.value)
+            type1_filter = [type.value for type in Type]
+            type1_filter.remove(pick.type2.value)
         case Clue.CORRECT:
-            type2_filter = [get_type_name(type) for type in Type]
-            type2_filter.remove(get_type_name(pick.type2))
+            type2_filter = [type.value for type in Type]
+            type2_filter.remove(pick.type2.value)
 
     # Update height filter
     match clues[3]:
