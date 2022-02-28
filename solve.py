@@ -164,8 +164,23 @@ def get_pick():
     # Get first listed result and return as Pokemon object
     res = cur.fetchone()
     con.close()
-    
-    pick = Pokemon(res[0], res[1], res[2], Type(res[3]), Type(res[4]), res[5], res[6], res[7])
+
+    try:
+        pick = Pokemon(res[0], res[1], res[2], Type(res[3]), Type(res[4]), res[5], res[6], res[7])
+    except:
+        print('No remaining options found.')
+        print('gen_low_bound = {}\ngen_high_bound = {}\ntype1_filter = {}\ntype2_filter = {}\nheight_low_bound = {}\nheight_high_bound = {}\nweight_low_bound = {}\nweight_high_bound = {}\npokemon = {}'.format(\
+        gen_low_bound,\
+        gen_high_bound,\
+        (", ".join(f"'{type}'" for type in type1_filter)) if len(type1_filter) > 0 else "''",\
+        (", ".join(f"'{type}'" for type in type2_filter)) if len(type2_filter) > 0 else "''",\
+        height_low_bound,\
+        height_high_bound,\
+        weight_low_bound,\
+        weight_high_bound,\
+        ", ".join(f"{id}" for id in pokemon)))
+        pick = None
+
     return pick
 
 def get_clues():
@@ -233,6 +248,8 @@ while(guesses < 8 and not (\
     match clues[1]:
         case Clue.WRONG:
             type1_filter.append(pick.type1.value)
+            # If the type in type 1 is wrong, it is in neither slot.
+            type2_filter.append(pick.type1.value)
         case Clue.WRONGPOS:
             type1_filter.append(pick.type1.value)
             type2_filter = [type.value for type in Type]
@@ -245,6 +262,8 @@ while(guesses < 8 and not (\
     match clues[2]:
         case Clue.WRONG:
             type2_filter.append(pick.type2.value)
+            # If the type in type 2 is wrong, it is in neither slot.
+            type1_filter.append(pick.type2.value)
         case Clue.WRONGPOS:
             type2_filter.append(pick.type2.value)
             type1_filter = [type.value for type in Type]
