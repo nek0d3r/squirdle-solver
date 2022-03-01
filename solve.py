@@ -1,31 +1,18 @@
-from dataclasses import dataclass
 from enum import Enum
 import math
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import sqlite3
 
-# Pokemon types
-class Type(Enum):
-    NONE = 0
-    NORMAL = 1
-    ELECTRIC = 2
-    PSYCHIC = 3
-    POISON = 4
-    GHOST = 5
-    FIRE = 6
-    WATER = 7
-    GROUND = 8
-    FIGHTING = 9
-    GRASS = 10
-    FLYING = 11
-    BUG = 12
-    DRAGON = 13
-    FAIRY = 14
-    STEEL = 15
-    DARK = 16
-    ICE = 17
-    ROCK = 18
+from poketype import Type, Pokemon
+import update
+
+try:
+    update.update_db()
+except:
+    print("Error updating database, exiting")
+    sys.exit()
 
 # Possible clues
 class Clue(Enum):
@@ -34,17 +21,6 @@ class Clue(Enum):
     WRONGPOS = 2
     UP = 3
     DOWN = 4
-
-# Pokemon struct
-@dataclass
-class Pokemon:
-    id: int
-    name: str
-    generation: int
-    type1: Type
-    type2: Type
-    height: float
-    weight: float
 
 # Transient Pokemon data (defaults from db, will be overwritten by db values)
 median_gen: int = 5
@@ -114,7 +90,6 @@ def is_filtered(pkmn: Pokemon):
 
 # Get next best guess
 def get_pick():
-    print("\n\nGetting top pick\n\n")
     # Get filtered list of possible Pokemon
     possible = []
     global pokemon
@@ -122,7 +97,6 @@ def get_pick():
         if is_filtered(pkmn):
             possible.append(pkmn)
     
-    print("Scores:")
     # Weight defaults
     top_pick: Pokemon
     best_score = 9999999999
@@ -157,7 +131,8 @@ def get_pick():
             best_score = score
             top_pick = pkmn
         
-        print(("\t{}(Gen {}, Type of {}/{}, Height of {}, Weight of {}):\t\t{}").format(pkmn.name, pkmn.generation, pkmn.type1.name, pkmn.type2.name, pkmn.height, pkmn.weight, score))
+        # Dump score data
+        # print(("\t{}(Gen {}, Type of {}/{}, Height of {}, Weight of {}):\t\t{}").format(pkmn.name, pkmn.generation, pkmn.type1.name, pkmn.type2.name, pkmn.height, pkmn.weight, score))
     try:
         return top_pick
     except:

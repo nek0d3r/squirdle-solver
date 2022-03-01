@@ -1,3 +1,5 @@
 /.vscode
 /.vs
+/__pycache__
 geckodriver.log
+PokeDB_old.db
