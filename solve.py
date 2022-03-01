@@ -63,10 +63,12 @@ weight_low_bound: float = 0
 weight_high_bound: float = 10000000
 guessed_pokemon: list[int] = []
 
+# Load all transient data into memory
 def load_pokemon():
     con = sqlite3.connect("PokeDB.db")
     cur = con.cursor()
 
+    # Get all Pokemon
     query = """
         SELECT
             PokeID,
@@ -84,6 +86,7 @@ def load_pokemon():
         global pokemon
         pokemon.append(Pokemon(row[0], row[1], row[2], Type(row[3]), Type(row[4]), row[5], row[6]))
     
+    # Get median values from view table
     query = """
         SELECT
             MedianValues."Median Gen",
@@ -94,12 +97,12 @@ def load_pokemon():
     cur.execute(query)
 
     res = cur.fetchone()
-    print(res)
     global median_gen, median_height, median_weight
     median_gen = int(res[0])
     median_height = float(res[1])
     median_weight = float(res[2])
 
+# Helper function, returns true if Pokemon is a possible pick
 def is_filtered(pkmn: Pokemon):
     if pkmn.id in guessed_pokemon: return False
     if pkmn.generation < gen_low_bound or pkmn.generation > gen_high_bound: return False
@@ -112,6 +115,7 @@ def is_filtered(pkmn: Pokemon):
 # Get next best guess
 def get_pick():
     print("\n\nGetting top pick\n\n")
+    # Get filtered list of possible Pokemon
     possible = []
     global pokemon
     for pkmn in pokemon:
@@ -119,22 +123,28 @@ def get_pick():
             possible.append(pkmn)
     
     print("Scores:")
+    # Weight defaults
     top_pick: Pokemon
     best_score = 9999999999
 
     for pkmn in possible:
+        # Total possible Pokemon
         total = float(len(possible))
+
+        # Pokemon with matching types
         type1 = []
         type2 = []
-
         for type in possible:
             if type.type1 == pkmn.type1:
                 type1.append(type)
             if type.type2 == pkmn.type2:
                 type2.append(type)
+        
+        # Total Pokemon with matching types
         type1_qty = len(type1)
         type2_qty = len(type2)
         
+        # Calculate weight
         global median_gen, median_height, median_weight
         score = math.pow(median_gen - pkmn.generation, 2.0) * 500 + \
             math.pow(total - type1_qty, 2.0) / total + \
@@ -142,6 +152,7 @@ def get_pick():
             math.pow(median_height - pkmn.height, 2.0) * 100 + \
             math.pow(median_weight - pkmn.weight, 2.0) * 10
         
+        # Update top pick if weight is lower than last top pick
         if score < best_score:
             best_score = score
             top_pick = pkmn
@@ -162,6 +173,7 @@ def get_pick():
         weight_high_bound,\
         ", ".join(f"{id}" for id in guessed_pokemon)))
 
+# Reads, parses, and returns last row of clues
 def get_clues():
     clues = []
     try:
