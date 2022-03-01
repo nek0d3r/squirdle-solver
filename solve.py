@@ -44,21 +44,55 @@ class Pokemon:
     type2: Type
     height: float
     weight: float
-    strength: float
+
+# All Pokemon
+pokemon: list[Pokemon] = []
 
 # Query filters
-gen_low_bound = 1
-gen_high_bound = 8
-type1_filter = []
-type2_filter = []
-height_low_bound = 0
-height_high_bound = 10000000
-weight_low_bound = 0
-weight_high_bound = 10000000
-pokemon = []
+gen_low_bound: int = 1
+gen_high_bound: int = 8
+type1_filter: list[Type] = []
+type2_filter: list[Type] = []
+height_low_bound: float = 0
+height_high_bound: float = 10000000
+weight_low_bound: float = 0
+weight_high_bound: float = 10000000
+guessed_pokemon: list[int] = []
+
+def load_pokemon():
+    con = sqlite3.connect("PokeDB.db")
+    cur = con.cursor()
+
+    query = """
+        SELECT
+            PokeID,
+            Name,
+            Generation,
+            Type1,
+            Type2,
+            Height,
+            Weight
+        FROM Pokemon
+    """
+
+    cur.execute(query)
+    
+    for row in cur.fetchall():
+        pokemon.append(Pokemon(row[0], row[1], row[2], Type(row[3]), Type(row[4]), row[5], row[6]))
+
+def is_filtered(pkmn: Pokemon):
+    if pkmn.id in guessed_pokemon: return False
+    if pkmn.generation < gen_low_bound or pkmn.generation > gen_high_bound: return False
+    if pkmn.type1 in type1_filter: return False
+    if pkmn.type2 in type2_filter: return False
+    if pkmn.height < height_low_bound or pkmn.height > height_high_bound: return False
+    if pkmn.weight < weight_low_bound or pkmn.weight > weight_high_bound: return False
+    return True
 
 # Get next best guess
 def get_pick():
+    possible = (pkmn for pkmn in pokemon if is_filtered(pkmn))
+    
     con = sqlite3.connect("PokeDB.db")
     cur = con.cursor()
 
@@ -159,14 +193,14 @@ def get_pick():
         height_high_bound,\
         weight_low_bound,\
         weight_high_bound,\
-        ", ".join(f"{id}" for id in pokemon)))
+        ", ".join(f"{id}" for id in guessed_pokemon)))
 
     # Get first listed result and return as Pokemon object
     res = cur.fetchone()
     con.close()
 
     try:
-        pick = Pokemon(res[0], res[1], res[2], Type(res[3]), Type(res[4]), res[5], res[6], res[7])
+        pick = Pokemon(res[0], res[1], res[2], Type(res[3]), Type(res[4]), res[5], res[6])
     except:
         print('No remaining options found.')
         print('gen_low_bound = {}\ngen_high_bound = {}\ntype1_filter = {}\ntype2_filter = {}\nheight_low_bound = {}\nheight_high_bound = {}\nweight_low_bound = {}\nweight_high_bound = {}\npokemon = {}'.format(\
@@ -178,7 +212,7 @@ def get_pick():
         height_high_bound,\
         weight_low_bound,\
         weight_high_bound,\
-        ", ".join(f"{id}" for id in pokemon)))
+        ", ".join(f"{id}" for id in guessed_pokemon)))
         pick = None
 
     return pick
@@ -201,6 +235,7 @@ def get_clues():
     return clues
 
 # Defaults for loop before first guess
+load_pokemon()
 pick = get_pick()
 clues = get_clues()
 
@@ -217,7 +252,7 @@ while(guesses < 8 and not (\
     clues[3] == Clue.CORRECT and\
     clues[4] == Clue.CORRECT)):
     # Add pick to filter
-    pokemon.append(pick.id)
+    guessed_pokemon.append(pick.id)
 
     # Get next best pick
     pick = get_pick()
