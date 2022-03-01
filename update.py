@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from typing import Any
 import urllib.request
 import sqlite3
@@ -29,23 +30,44 @@ for line in data:
         float(line[4]),\
         float(line[5])))
     index += 1
-print(pokemon)
 
-# query = """
-#     INSERT INTO
-#         Pokemon
-#     (
-#         PokeID,
-#         Name,
-#         Generation,
-#         Type1,
-#         Type2,
-#         Height,
-#         Weight
-#     )
-#     VALUES
-#     ({}, "{}", {}, {}, {}, {}, {})
-# """
+queryscript: str = """
+    DROP TABLE Pokemon;
+
+    CREATE TABLE Pokemon (
+        PokeID INTEGER PRIMARY KEY NOT NULL,
+        Name STRING NOT NULL UNIQUE,
+        Generation INTEGER NOT NULL,
+        Type1 INTEGER REFERENCES Type (TypeID) NOT NULL,
+        Type2 INTEGER REFERENCES Type (TypeID) NOT NULL DEFAULT (0),
+        Height DOUBLE, Weight DOUBLE
+    );
+"""
+
+for pkmn in pokemon:
+    query = """
+        INSERT INTO
+            Pokemon
+        (
+            PokeID,
+            Name,
+            Generation,
+            Type1,
+            Type2,
+            Height,
+            Weight
+        )
+        VALUES
+        ({}, "{}", {}, {}, {}, {}, {});
+    """
+    queryscript += query.format(\
+        pkmn.id,\
+        pkmn.name,\
+        pkmn.generation,\
+        pkmn.type1.value,\
+        pkmn.type2.value,\
+        pkmn.height,\
+        pkmn.weight)
 
 os.remove("PokeDB.db")
 shutil.copy("PokeDB_old.db", "PokeDB.db")
