@@ -1,10 +1,18 @@
 from enum import Enum
 import math
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import sqlite3
 
 from poketype import Type, Pokemon
+import update
+
+try:
+    update.update_db()
+except:
+    print("Error updating database, exiting")
+    sys.exit()
 
 # Possible clues
 class Clue(Enum):
@@ -82,7 +90,6 @@ def is_filtered(pkmn: Pokemon):
 
 # Get next best guess
 def get_pick():
-    print("\n\nGetting top pick\n\n")
     # Get filtered list of possible Pokemon
     possible = []
     global pokemon
@@ -90,7 +97,6 @@ def get_pick():
         if is_filtered(pkmn):
             possible.append(pkmn)
     
-    print("Scores:")
     # Weight defaults
     top_pick: Pokemon
     best_score = 9999999999
@@ -125,7 +131,8 @@ def get_pick():
             best_score = score
             top_pick = pkmn
         
-        print(("\t{}(Gen {}, Type of {}/{}, Height of {}, Weight of {}):\t\t{}").format(pkmn.name, pkmn.generation, pkmn.type1.name, pkmn.type2.name, pkmn.height, pkmn.weight, score))
+        # Dump score data
+        # print(("\t{}(Gen {}, Type of {}/{}, Height of {}, Weight of {}):\t\t{}").format(pkmn.name, pkmn.generation, pkmn.type1.name, pkmn.type2.name, pkmn.height, pkmn.weight, score))
     try:
         return top_pick
     except:

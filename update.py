@@ -37,7 +37,7 @@ def scrape_pokemon_data(raw_data):
 # Build query script to drop and create Pokemon table, populate with given Pokemon list
 def build_query_script(pokemon):
     queryscript: str = """
-        DROP TABLE Pokemon;
+        DROP TABLE IF EXISTS Pokemon;
 
         CREATE TABLE Pokemon (
             PokeID INTEGER PRIMARY KEY NOT NULL,
@@ -51,8 +51,7 @@ def build_query_script(pokemon):
 
     for pkmn in pokemon:
         query = """
-            INSERT INTO
-                Pokemon
+            INSERT INTO Pokemon
             (
                 PokeID,
                 Name,
@@ -76,35 +75,152 @@ def build_query_script(pokemon):
 
     return queryscript
 
-print("Attempting to update Pokemon database...")
+def create_db():
+    try:
+        print("Creating new database...")
+        
+        con = sqlite3.connect("PokeDB.db")
+        cur = con.cursor()
 
-try:
-    # Get raw data
-    raw_data = fetch_squirdle_data()
+        queryscript = """
+            CREATE TABLE Pokemon (
+                PokeID INTEGER PRIMARY KEY NOT NULL,
+                Name STRING NOT NULL UNIQUE,
+                Generation INTEGER NOT NULL,
+                Type1 INTEGER REFERENCES Type (TypeID) NOT NULL,
+                Type2 INTEGER REFERENCES Type (TypeID) NOT NULL DEFAULT (0),
+                Height DOUBLE, Weight DOUBLE
+            );
 
-    # Generate Pokemon list
-    pokemon = scrape_pokemon_data(raw_data)
+            CREATE TABLE Type (
+                TypeID INTEGER NOT NULL PRIMARY KEY,
+                TypeName INTEGER NOT NULL UNIQUE
+            );
+        """
 
-    # Build queries to run
-    query = build_query_script(pokemon)
+        for type in Type:
+            query = """
+                INSERT INTO Type (TypeID, TypeName)
+                VALUES ({}, "{}");
+            """
+            queryscript += query.format(type.value, type.name.capitalize())
 
-    # Create backup of existing db
-    shutil.copy("PokeDB.db", "PokeDB_old.db")
+        queryscript += """
+            CREATE VIEW MedianValues AS SELECT
+                AVG(gen.Generation) AS "Median Gen",
+                AVG(hgt.Height) AS "Median Height",
+                AVG(wgt.Weight) AS "Median Weight"
+            FROM
+            (
+                SELECT Generation
+                FROM Pokemon
+                ORDER BY Generation
+                LIMIT 2 - (SELECT COUNT(*) FROM Pokemon) % 2
+                OFFSET (SELECT (COUNT(*)-1)/2 FROM Pokemon)
+            ) gen,
+            (
+                SELECT Height
+                FROM Pokemon
+                WHERE Height IS NOT NULL
+                ORDER BY Height
+                LIMIT 2 - (SELECT COUNT(Height) FROM Pokemon) % 2
+                OFFSET (SELECT (COUNT(Height)-1)/2 FROM Pokemon)
+            ) hgt,
+            (
+                SELECT Weight
+                FROM Pokemon
+                WHERE Weight IS NOT NULL
+                ORDER BY Weight
+                LIMIT 2 - (SELECT COUNT(Weight) FROM Pokemon) % 2
+                OFFSET (SELECT (COUNT(Weight)-1)/2 FROM Pokemon)
+            ) wgt;
 
-    con = sqlite3.connect("PokeDB.db")
-    cur = con.cursor()
+            CREATE VIEW TypeAnalysis AS SELECT
+                TypeName,
+                '1' AS Type,
+                COUNT(p.Type1) AS Qty
+            FROM Pokemon p
+            INNER JOIN Type t ON p.Type1 = t.TypeID
+            GROUP BY p.Type1
+            UNION
+            SELECT
+                TypeName,
+                '2',
+                COUNT(p.Type2) AS Type
+            FROM Pokemon p
+            INNER JOIN Type t ON p.Type2 = t.TypeID
+            GROUP BY p.Type2
+            ORDER BY 2, 3 DESC;
 
-    cur.executescript(query)
+            CREATE VIEW StrongFirstPicks AS SELECT p.* FROM Pokemon p
+            JOIN MedianValues v
+                ON p.Generation BETWEEN v."Median Gen" - 1 AND v."Median Gen" + 1
+                AND p.Weight BETWEEN v."Median Weight" - 6 AND v."Median Weight" + 6
+                AND p.Height BETWEEN v."Median Height" - 0.3 AND v."Median Height" + 0.3
+                AND p.Type1 IN (
+                    SELECT TypeID FROM Type t
+                        INNER JOIN TypeAnalysis ta
+                            ON t.TypeName = ta.TypeName
+                            AND ta.Type = '1'
+                            ORDER BY ta.Type, Qty DESC
+                        LIMIT 5
+                )
+                AND p.Type2 IN (
+                    SELECT TypeID FROM Type t
+                        INNER JOIN TypeAnalysis ta
+                            ON t.TypeName = ta.TypeName
+                            AND ta.Type = '2'
+                            ORDER BY ta.Type, Qty DESC
+                        LIMIT 3
+                );
+        """
 
-    con.commit()
-    con.close()
+        cur.executescript(queryscript)
+        con.commit()
+        con.close()
 
-    os.remove("PokeDB_old.db")
-    print("Database successfully updated")
-except:
-    # If something went wrong, revert to backup
-    os.remove("PokeDB.db")
-    shutil.copy("PokeDB_old.db", "PokeDB.db")
-    os.remove("PokeDB_old.db")
+    except:
+        con.close()
+        os.remove("PokeDB.db")
+        print("Something went wrong creating database")
+
+def update_db():
+    if not os.path.isfile("PokeDB.db"):
+        print("No database found")
+        create_db()
+
+    print("Attempting to update Pokemon database...")
     
-    print("Something went wrong updating database, nothing has changed")
+    try:
+        # Get raw data
+        raw_data = fetch_squirdle_data()
+
+        # Generate Pokemon list
+        pokemon = scrape_pokemon_data(raw_data)
+
+        # Build queries to run
+        query = build_query_script(pokemon)
+
+        # Create backup of existing db
+        shutil.copy("PokeDB.db", "PokeDB_old.db")
+
+        con = sqlite3.connect("PokeDB.db")
+        cur = con.cursor()
+        cur.executescript(query)
+
+        con.commit()
+
+        os.remove("PokeDB_old.db")
+        print("Database successfully updated")
+    except:
+        # If something went wrong, revert to backup
+        con.close()
+
+        if os.path.isfile("PokeDB_old.db"):
+            os.remove("PokeDB.db")
+            shutil.copy("PokeDB_old.db", "PokeDB.db")
+            os.remove("PokeDB_old.db")
+        
+        print("Something went wrong updating database, nothing has changed")
+    
+    con.close()
