@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 
 # Pokemon types
@@ -21,3 +22,14 @@ class Type(Enum):
     DARK = 16
     ICE = 17
     ROCK = 18
+
+# Pokemon struct
+@dataclass
+class Pokemon:
+    id: int
+    name: str
+    generation: int
+    type1: Type
+    type2: Type
+    height: float
+    weight: float

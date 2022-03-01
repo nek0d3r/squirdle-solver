@@ -1,11 +1,10 @@
-from dataclasses import dataclass
 from enum import Enum
 import math
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import sqlite3
 
-from poketype import Type
+from poketype import Type, Pokemon
 
 # Possible clues
 class Clue(Enum):
@@ -14,17 +13,6 @@ class Clue(Enum):
     WRONGPOS = 2
     UP = 3
     DOWN = 4
-
-# Pokemon struct
-@dataclass
-class Pokemon:
-    id: int
-    name: str
-    generation: int
-    type1: Type
-    type2: Type
-    height: float
-    weight: float
 
 # Transient Pokemon data (defaults from db, will be overwritten by db values)
 median_gen: int = 5
