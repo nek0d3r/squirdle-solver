@@ -120,7 +120,7 @@ def get_pick():
     
     print("Scores:")
     top_pick: Pokemon
-    top_score = 0
+    best_score = 9999999999
 
     for pkmn in possible:
         total = float(len(possible))
@@ -139,11 +139,11 @@ def get_pick():
         score = math.pow(median_gen - pkmn.generation, 2.0) * 500 + \
             math.pow(total - type1_qty, 2.0) / total + \
             math.pow(total - type2_qty, 2.0) / total + \
-            math.pow(median_height - pkmn.height, 2.0) * 500 + \
+            math.pow(median_height - pkmn.height, 2.0) * 100 + \
             math.pow(median_weight - pkmn.weight, 2.0) * 10
         
-        if score > top_score:
-            top_score = score
+        if score < best_score:
+            best_score = score
             top_pick = pkmn
         
         print(("\t{}(Gen {}, Type of {}/{}, Height of {}, Weight of {}):\t\t{}").format(pkmn.name, pkmn.generation, pkmn.type1.name, pkmn.type2.name, pkmn.height, pkmn.weight, score))
