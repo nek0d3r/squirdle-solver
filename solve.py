@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+import math
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import sqlite3
@@ -45,7 +46,10 @@ class Pokemon:
     height: float
     weight: float
 
-# All Pokemon
+# Transient Pokemon data (defaults from db, will be overwritten by db values)
+median_gen: int = 5
+median_height: float = 1.0
+median_weight: float = 30.0
 pokemon: list[Pokemon] = []
 
 # Query filters
@@ -74,133 +78,77 @@ def load_pokemon():
             Weight
         FROM Pokemon
     """
-
     cur.execute(query)
     
     for row in cur.fetchall():
+        global pokemon
         pokemon.append(Pokemon(row[0], row[1], row[2], Type(row[3]), Type(row[4]), row[5], row[6]))
+    
+    query = """
+        SELECT
+            MedianValues."Median Gen",
+            MedianValues."Median Height",
+            MedianValues."Median Weight"
+        FROM MedianValues
+    """
+    cur.execute(query)
+
+    res = cur.fetchone()
+    print(res)
+    global median_gen, median_height, median_weight
+    median_gen = int(res[0])
+    median_height = float(res[1])
+    median_weight = float(res[2])
 
 def is_filtered(pkmn: Pokemon):
     if pkmn.id in guessed_pokemon: return False
     if pkmn.generation < gen_low_bound or pkmn.generation > gen_high_bound: return False
-    if pkmn.type1 in type1_filter: return False
-    if pkmn.type2 in type2_filter: return False
+    if pkmn.type1.value in type1_filter: return False
+    if pkmn.type2.value in type2_filter: return False
     if pkmn.height < height_low_bound or pkmn.height > height_high_bound: return False
     if pkmn.weight < weight_low_bound or pkmn.weight > weight_high_bound: return False
     return True
 
 # Get next best guess
 def get_pick():
-    possible = (pkmn for pkmn in pokemon if is_filtered(pkmn))
+    print("\n\nGetting top pick\n\n")
+    possible = []
+    global pokemon
+    for pkmn in pokemon:
+        if is_filtered(pkmn):
+            possible.append(pkmn)
     
-    con = sqlite3.connect("PokeDB.db")
-    cur = con.cursor()
+    print("Scores:")
+    top_pick: Pokemon
+    top_score = 0
 
-    query = """
-        WITH p AS (
-            SELECT
-                p.PokeID,
-                p.Name,
-                p.Generation,
-                p.Type1,
-                p.Type2,
-                p.Height,
-                p.Weight
-            FROM
-                Pokemon p
-            -- Now for the filters
-            WHERE p.Generation BETWEEN {} AND {}
-                AND p.Type1 NOT IN ({})
-                AND p.Type2 NOT IN ({})
-                AND (p.Height BETWEEN {} AND {} OR p.Height IS NULL)
-                AND (p.Weight BETWEEN {} AND {} OR p.Weight IS NULL)
-                AND p.PokeID NOT IN ({})
-        ),
-        TypeListOrdered AS (
-            SELECT p.Type1 AS TypeName, COUNT(p.Type1) AS Qty
-            FROM p
-            GROUP BY p.Type1
-            UNION
-            SELECT p.Type2, COUNT(p.Type2)
-            FROM p
-            GROUP BY p.Type2
-        ),
-        TypeList AS (
-            SELECT
-                TypeName,
-                SUM(Qty) AS Qty
-            FROM TypeListOrdered
-            GROUP BY TypeName
-            ORDER BY 2 DESC
-        ),
-        TotalPoke AS (
-            SELECT COUNT(*) AS Total FROM p
-        ),
-        Medians AS (
-            SELECT
-                AVG(gen.Generation) AS "Median Gen",
-                AVG(hgt.Height) AS "Median Height",
-                AVG(wgt.Weight) AS "Median Weight"
-            FROM
-            (
-                SELECT Generation
-                FROM p
-                ORDER BY Generation
-                LIMIT 2 - (SELECT Total FROM TotalPoke) % 2
-                OFFSET (SELECT (Total-1)/2 FROM TotalPoke)
-            ) gen,
-            (
-                SELECT Height
-                FROM p
-                WHERE Height IS NOT NULL
-                ORDER BY Height
-                LIMIT 2 - (SELECT Total FROM TotalPoke) % 2
-                OFFSET (SELECT (Total-1)/2 FROM TotalPoke)
-            ) hgt,
-            (
-                SELECT Weight
-                FROM p
-                WHERE Weight IS NOT NULL
-                ORDER BY Weight
-                LIMIT 2 - (SELECT Total FROM TotalPoke) % 2
-                OFFSET (SELECT (Total-1)/2 FROM TotalPoke)
-            ) wgt
-        )
+    for pkmn in possible:
+        total = float(len(possible))
+        type1 = []
+        type2 = []
 
-        SELECT
-            p.*,
-            ("Median Gen"-p.Generation)*("Median Gen"-p.Generation)*500 +
-                (Total - tl1.Qty)*(Total - tl1.Qty)/Total +
-                (Total - tl2.Qty)*(Total - tl2.Qty)/Total +
-                ("Median Height" - p.Height)*("Median Height" - p.Height)*100 +
-                ("Median Weight" - p.Weight)*("Median Weight" - p.Weight)*10 AS PickDistance
-        FROM p, Medians, TotalPoke
-        INNER JOIN TypeList tl1
-            ON tl1.TypeName = p.Type1
-        INNER JOIN TypeList tl2
-            ON tl2.TypeName = p.Type2
-
-        ORDER BY 7
-        LIMIT 1
-    """
-
-    cur.execute(query.format(\
-        gen_low_bound,\
-        gen_high_bound,\
-        ", ".join(f"{type}" for type in type1_filter),\
-        ", ".join(f"{type}" for type in type2_filter),\
-        height_low_bound,\
-        height_high_bound,\
-        weight_low_bound,\
-        weight_high_bound,\
-        ", ".join(f"{id}" for id in guessed_pokemon)))
-
-    # Get first listed result and return as Pokemon object
-    res = cur.fetchone()
-    con.close()
-
+        for type in possible:
+            if type.type1 == pkmn.type1:
+                type1.append(type)
+            if type.type2 == pkmn.type2:
+                type2.append(type)
+        type1_qty = len(type1)
+        type2_qty = len(type2)
+        
+        global median_gen, median_height, median_weight
+        score = math.pow(median_gen - pkmn.generation, 2.0) * 500 + \
+            math.pow(total - type1_qty, 2.0) / total + \
+            math.pow(total - type2_qty, 2.0) / total + \
+            math.pow(median_height - pkmn.height, 2.0) * 500 + \
+            math.pow(median_weight - pkmn.weight, 2.0) * 10
+        
+        if score > top_score:
+            top_score = score
+            top_pick = pkmn
+        
+        print(("\t{}(Gen {}, Type of {}/{}, Height of {}, Weight of {}):\t\t{}").format(pkmn.name, pkmn.generation, pkmn.type1.name, pkmn.type2.name, pkmn.height, pkmn.weight, score))
     try:
-        pick = Pokemon(res[0], res[1], res[2], Type(res[3]), Type(res[4]), res[5], res[6])
+        return top_pick
     except:
         print('No remaining options found.')
         print('gen_low_bound = {}\ngen_high_bound = {}\ntype1_filter = {}\ntype2_filter = {}\nheight_low_bound = {}\nheight_high_bound = {}\nweight_low_bound = {}\nweight_high_bound = {}\npokemon = {}'.format(\
@@ -213,9 +161,6 @@ def get_pick():
         weight_low_bound,\
         weight_high_bound,\
         ", ".join(f"{id}" for id in guessed_pokemon)))
-        pick = None
-
-    return pick
 
 def get_clues():
     clues = []
