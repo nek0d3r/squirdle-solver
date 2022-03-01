@@ -4,6 +4,8 @@ A Selenium-based Python script for automating playing the Pokemon puzzle game [S
 
 ## Installation
 
+[Python 3.10](https://www.python.org/downloads/) or later is required to run this script.
+
 Clone the repository to your folder of choice.
 
 ```bash
