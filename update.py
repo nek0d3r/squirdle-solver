@@ -75,6 +75,7 @@ def build_query_script(pokemon):
 
     return queryscript
 
+# Create new db with placeholder Pokemon table and views
 def create_db():
     try:
         print("Creating new database...")
@@ -184,6 +185,7 @@ def create_db():
         os.remove("PokeDB.db")
         print("Something went wrong creating database")
 
+# Update db, call create if it doesn't exist
 def update_db():
     if not os.path.isfile("PokeDB.db"):
         print("No database found")
