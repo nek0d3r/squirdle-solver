@@ -3,34 +3,32 @@ import shutil
 from typing import Any
 import urllib.request
 import sqlite3
+import json
 
 from poketype import Type, Pokemon
 
-squirdle_data_src = "https://raw.githubusercontent.com/Fireblend/squirdle/main/pokedex.csv"
+squirdle_data_src = "https://raw.githubusercontent.com/Fireblend/squirdle/main/data/pokedex.json"
 
 # Fetch squirdle pokedex from repo
 def fetch_squirdle_data():
     with urllib.request.urlopen(squirdle_data_src) as f:
-        data = f.read().decode("utf-8").splitlines()
-        del data[0]
-
+        data = json.load(f)
         return data
 
 # Scrape data from csv and cast into struct
 def scrape_pokemon_data(raw_data):
     index: int = 1
     pokemon: list[Pokemon] = []
-    for line in raw_data:
-        line = line.split(",")
+    for name, details in raw_data.items():
+        generation: int = details[0]
+        type1: Type = Type[details[1].upper()] if details[1] != "" else Type.NONE
+        type2: Type = Type[details[2].upper()] if details[2] != "" else Type.NONE
+        height: float = float(details[3])
+        weight: float = float(details[4])
+
         # Type 1 shouldn't reaaaally need the none type check, but for the sake of my sanity... 🤷
-        pokemon.append(Pokemon(\
-            index,\
-            line[0],\
-            int(line[1]),\
-            Type[line[2].upper()] if line[2] != "" else Type.NONE,\
-            Type[line[3].upper()] if line[3] != "" else Type.NONE,\
-            float(line[4]),\
-            float(line[5])))
+        pokemon.append(Pokemon(index, name, generation, type1, type2, height, weight))
+
         index += 1
     return pokemon
 
