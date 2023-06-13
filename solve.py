@@ -30,13 +30,13 @@ pokemon: list[Pokemon] = []
 
 # Query filters
 gen_low_bound: int = 1
-gen_high_bound: int = 8
+gen_high_bound: int = 1
 type1_filter: list[Type] = []
 type2_filter: list[Type] = []
 height_low_bound: float = 0
-height_high_bound: float = 10000000
+height_high_bound: float = 0
 weight_low_bound: float = 0
-weight_high_bound: float = 10000000
+weight_high_bound: float = 0
 guessed_pokemon: list[int] = []
 
 # Load all transient data into memory
@@ -77,6 +77,17 @@ def load_pokemon():
     median_gen = int(res[0])
     median_height = float(res[1])
     median_weight = float(res[2])
+
+# Sets the highest possible values as filter bounds
+def set_max_bounds():
+    global gen_high_bound, height_high_bound, weight_high_bound
+    for entry in pokemon:
+        if entry.generation > gen_high_bound:
+            gen_high_bound = entry.generation
+        if entry.height > height_high_bound:
+            height_high_bound = entry.height
+        if entry.weight > weight_high_bound:
+            weight_high_bound = entry.weight
 
 # Helper function, returns true if Pokemon is a possible pick
 def is_filtered(pkmn: Pokemon):
@@ -168,6 +179,7 @@ def get_clues():
 
 # Defaults for loop before first guess
 load_pokemon()
+set_max_bounds()
 pick = get_pick()
 clues = get_clues()
 

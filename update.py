@@ -4,6 +4,7 @@ from typing import Any
 import urllib.request
 import sqlite3
 import json
+import filecmp
 
 from poketype import Type, Pokemon
 
@@ -14,6 +15,25 @@ def fetch_squirdle_data():
     with urllib.request.urlopen(squirdle_data_src) as f:
         data = json.load(f)
         return data
+
+# Checks data source against local cache
+def newer_than_cache():
+    urllib.request.urlretrieve(squirdle_data_src, ".compare")
+    
+    if not os.path.isfile(".cache"):
+        shutil.copy(".compare", ".cache")
+        os.remove(".compare")
+        return True
+    
+    result = filecmp.cmp(".compare", ".cache", True)
+    if result:
+        os.remove(".compare")
+    else:
+        os.remove(".cache")
+        shutil.copy(".compare", ".cache")
+        os.remove(".compare")
+    
+    return not result
 
 # Scrape data from csv and cast into struct
 def scrape_pokemon_data(raw_data):
@@ -191,36 +211,39 @@ def update_db():
 
     print("Attempting to update Pokemon database...")
     
-    try:
-        # Get raw data
-        raw_data = fetch_squirdle_data()
+    if newer_than_cache():
+        try:
+            # Get raw data
+            raw_data = fetch_squirdle_data()
 
-        # Generate Pokemon list
-        pokemon = scrape_pokemon_data(raw_data)
+            # Generate Pokemon list
+            pokemon = scrape_pokemon_data(raw_data)
 
-        # Build queries to run
-        query = build_query_script(pokemon)
+            # Build queries to run
+            query = build_query_script(pokemon)
 
-        # Create backup of existing db
-        shutil.copy("PokeDB.db", "PokeDB_old.db")
+            # Create backup of existing db
+            shutil.copy("PokeDB.db", "PokeDB_old.db")
 
-        con = sqlite3.connect("PokeDB.db")
-        cur = con.cursor()
-        cur.executescript(query)
+            con = sqlite3.connect("PokeDB.db")
+            cur = con.cursor()
+            cur.executescript(query)
 
-        con.commit()
+            con.commit()
 
-        os.remove("PokeDB_old.db")
-        print("Database successfully updated")
-    except:
-        # If something went wrong, revert to backup
-        con.close()
-
-        if os.path.isfile("PokeDB_old.db"):
-            os.remove("PokeDB.db")
-            shutil.copy("PokeDB_old.db", "PokeDB.db")
             os.remove("PokeDB_old.db")
-        
-        print("Something went wrong updating database, nothing has changed")
-    
-    con.close()
+            print("Database successfully updated")
+
+            con.close()
+        except:
+            # If something went wrong, revert to backup
+            con.close()
+
+            if os.path.isfile("PokeDB_old.db"):
+                os.remove("PokeDB.db")
+                shutil.copy("PokeDB_old.db", "PokeDB.db")
+                os.remove("PokeDB_old.db")
+            
+            print("Something went wrong updating database, nothing has changed")
+    else:
+        print("Database already up to date")
